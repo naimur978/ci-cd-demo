@@ -73,6 +73,46 @@ ci-cd-demo/
    ===================== 1 passed in 0.02s =====================
    ```
 
+## Docker Setup
+
+### Build Docker Image
+To containerize the application, build the Docker image using the provided `Dockerfile`:
+```bash
+docker build -t ci-cd-demo .
+```
+
+### Run Docker Container
+Run the container using the built image:
+```bash
+docker run --name ci-cd-container ci-cd-demo
+```
+
+As the application contains a simple summation functionality, the container will exit after printing the output (e.g., `5 + 3 = 8`).
+
+### Verify Running Containers
+If you want to check running containers:
+```bash
+docker ps
+```
+If the container has exited, you can list all containers (including stopped ones):
+```bash
+docker ps -a
+```
+
+### Remove Container
+After testing, you can clean up by removing the container:
+```bash
+docker rm ci-cd-container
+```
+
+### Push Image to Docker Hub
+To push the image to Docker Hub, ensure you are logged in and run:
+```bash
+docker tag ci-cd-demo your-dockerhub-username/ci-cd-demo
+
+docker push your-dockerhub-username/ci-cd-demo
+```
+
 ## CI/CD Pipeline
 
 ### Workflow Configuration
