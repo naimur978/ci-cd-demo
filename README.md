@@ -1,15 +1,26 @@
-# CI/CD Pipeline Demo
+# CI/CD Pipeline Demo with Docker
 
-This repository demonstrates a simple CI/CD pipeline using **GitHub Actions** to automate testing and deployment for a Python project.
+This repository demonstrates a simple CI/CD pipeline using **GitHub Actions** and Docker to automate testing and deployment for a Python project.
 
 ## Features
 - Automates testing of Python code using **pytest**.
 - Runs the pipeline on every push or pull request to the `main` branch.
+- Builds and pushes a Docker image to Docker Hub as part of the CI/CD pipeline.
 
 ## Prerequisites
 1. **Python**: Ensure Python 3.9 or later is installed.
 2. **Git**: Ensure Git is installed and configured.
-3. **Visual Studio Code**: Recommended for editing and managing the project.
+3. **Docker**: Ensure Docker is installed and running.
+4. **GitHub Secrets**: Add the following secrets to your GitHub repository:
+   - `DOCKER_USERNAME`: Your Docker Hub username.
+   - `DOCKER_PASSWORD`: Your Docker Hub password.
+
+Alternatively, you can use a `.env` file to store your Docker credentials locally. The `.env` file should look like this:
+```plaintext
+DOCKER_USERNAME=your-dockerhub-username
+DOCKER_PASSWORD=your-dockerhub-password
+```
+The workflow reads these environment variables using the `source .env` command.
 
 ## Project Structure
 ```
@@ -17,6 +28,7 @@ ci-cd-demo/
 ├── app.py             # Python script with basic functionality
 ├── test_app.py        # Test script for app.py
 ├── requirements.txt   # List of project dependencies
+├── Dockerfile         # Docker configuration file
 └── .github/
     └── workflows/
         └── ci.yml    # GitHub Actions workflow configuration
@@ -80,9 +92,74 @@ The pipeline is defined in `.github/workflows/ci.yml`.
 
 ### Continuous Deployment (CD)
 - **Objective**: Automate the deployment of tested and approved code.
-- **Steps to Extend the Workflow**:
-  1. Add deployment steps (e.g., deploying to a server or cloud platform).
-  2. Use deployment tools like **AWS CLI**, **Docker**, or **SSH** for automation.
+- **Steps in the Workflow**:
+  1. **Log in to Docker Hub**: Uses secrets or `.env` file to authenticate.
+  2. **Build Docker Image**: Creates a Docker image for the application.
+  3. **Push Docker Image**: Pushes the Docker image to Docker Hub.
+
+### Workflow File (`ci.yml`)
+```yaml
+name: CI/CD Pipeline with Docker
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Checkout the code
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      # Set up Python
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+
+      # Install dependencies
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      # Run tests
+      - name: Run tests
+        run: pytest
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      # Checkout the code
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      # Load environment variables from .env
+      - name: Load .env variables
+        run: |
+          set -a
+          [ -f .env ] && . .env
+          set +a
+
+      # Log in to DockerHub
+      - name: Log in to DockerHub
+        run: |
+          echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
+
+      # Build and push the Docker image
+      - name: Build and push Docker image
+        run: |
+          docker build -t ${{ secrets.DOCKER_USERNAME }}/ci-cd-demo:${{ github.sha }} .
+          docker push ${{ secrets.DOCKER_USERNAME }}/ci-cd-demo:${{ github.sha }}
+```
 
 ### Steps to Observe the Pipeline
 1. Push changes to the `main` branch:
@@ -95,24 +172,22 @@ The pipeline is defined in `.github/workflows/ci.yml`.
 2. Go to the "Actions" tab in the GitHub repository.
 3. Monitor the status of the workflow runs.
 
-## Extending the Pipeline
-- Add deployment steps for cloud or server deployment (e.g., using **AWS**, **Docker**, or **SSH**).
-- Enhance testing with code coverage tools or additional test cases.
+## Additional Notes
+As the application in this repository contains a simple summation functionality, the Docker container will not run for long periods. This is suitable for demo purposes but can be extended for more complex applications.
 
-
-# Why Use Both Local Testing and GitHub Actions?
+## Why Use Both Local Testing and GitHub Actions?
 
 In software development, ensuring code quality is critical. While **pytest** allows developers to test their code locally, automating tests with **GitHub Actions** adds an extra layer of reliability. This document explains why both approaches are essential and how they complement each other.
 
 ---
 
-## Why Automate Testing if I Already Ran Pytest Locally?
+### Why Automate Testing if I Already Ran Pytest Locally?
 
-### 1. **Eliminates Human Error**
+#### 1. **Eliminates Human Error**
    - Developers might forget to run tests locally, especially in fast-paced environments or under time pressure.
    - GitHub Actions ensures that tests are **always run**, regardless of whether someone remembers to do it manually.
 
-### 2. **Consistent Testing Environment**
+#### 2. **Consistent Testing Environment**
    - Your local setup (e.g., Python version, dependencies, OS) might differ from other developers' setups or the production environment.
    - GitHub Actions runs tests in a **clean, isolated environment** (e.g., Ubuntu with a specific Python version). This consistency ensures your code works beyond your machine.
 
@@ -121,7 +196,7 @@ In software development, ensuring code quality is critical. While **pytest** all
    - Another team member or the production server uses Python 3.8 or dependency `1.3.0`.
    - Tests might pass locally but fail in those environments. GitHub Actions catches these discrepancies.
 
-### 3. **Team Collaboration**
+#### 3. **Team Collaboration**
    - In collaborative projects, multiple developers contribute code. You don’t know if your changes will break something when combined with others' work.
    - GitHub Actions runs tests **on the combined codebase**, ensuring everything works together.
 
@@ -129,21 +204,21 @@ In software development, ensuring code quality is critical. While **pytest** all
    - Developer A and Developer B both make changes. Each runs pytest locally and sees no issues.
    - But when their changes merge, they conflict, breaking the code. GitHub Actions catches this problem.
 
-### 4. **Integration Testing**
+#### 4. **Integration Testing**
    - Local pytest typically focuses on testing specific changes.
    - Automated workflows might run **integration tests** or tests involving multiple components, which may not be run locally due to time constraints.
 
-### 5. **Accountability and Visibility**
+#### 5. **Accountability and Visibility**
    - Test results in GitHub Actions are visible to the entire team.
    - A failed test on a pull request alerts everyone, making the issue easier to spot and fix before merging.
 
-### 6. **Catch Edge Cases**
+#### 6. **Catch Edge Cases**
    - GitHub Actions can run tests in multiple configurations (e.g., Python 3.8, 3.9, 3.10).
    - Even if your local tests pass in Python 3.9, automation might reveal failures in Python 3.8 or another environment.
 
 ---
 
-## What’s the Point of Running Pytest Locally, Then?
+### What’s the Point of Running Pytest Locally, Then?
 
 Running pytest locally serves as a **first line of defense**:
 - **Fast Feedback**: Fix errors immediately while you’re coding.
@@ -156,7 +231,7 @@ Running pytest locally serves as a **first line of defense**:
 
 ---
 
-## Analogy
+### Analogy
 - **Locally running pytest** = **You testing your homework** before turning it in.
 - **GitHub Actions** = **The teacher grading your homework** to ensure it's correct and consistent for everyone.
 
