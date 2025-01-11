@@ -99,14 +99,6 @@ The pipeline is defined in `.github/workflows/ci.yml`.
 - Add deployment steps for cloud or server deployment (e.g., using **AWS**, **Docker**, or **SSH**).
 - Enhance testing with code coverage tools or additional test cases.
 
-## License
-This project is licensed under the MIT License.
-
-## Contributions
-Feel free to open issues or create pull requests to improve this project.
-
-
-
 
 # Why Use Both Local Testing and GitHub Actions?
 
